@@ -83,6 +83,11 @@ with st.sidebar:
     img_px = st.slider("出力画像サイズ（正方）px", min_value=64, max_value=1024, value=224, step=32)
     invert = st.checkbox("白黒反転（黒=非再帰）", value=False)
 
+    st.header("保存オプション")
+    save_local = st.checkbox("ローカルにも保存する", value=False)
+    local_dir = st.text_input("保存先フォルダ（例 C:\code\RP-exports）", value="")
+    unzip_local = st.checkbox("ZIPを展開して保存", value=True)
+
     st.header("ε（しきい値）の決定")
     eps_mode = st.radio("方法", ["目標RR（分位点）", "中央値（RR≈50%）", "固定値（手動ε）"], index=0)
     rr = st.slider("目標RR（黒画素率）", min_value=0.01, max_value=0.50, value=0.10, step=0.01)
@@ -204,6 +209,20 @@ if file is not None:
             file_name=zip_name,
             mime="application/zip",
         )
+
+        # Optional local save (server-side)
+        if save_local and local_dir.strip():
+            try:
+                os.makedirs(local_dir, exist_ok=True)
+                local_zip = os.path.join(local_dir, zip_name)
+                with open(local_zip, "wb") as f:
+                    f.write(zip_buf.getvalue())
+                if unzip_local:
+                    with zipfile.ZipFile(io.BytesIO(zip_buf.getvalue())) as z:
+                        z.extractall(local_dir)
+                st.info(f"ローカル保存: {local_zip}" + ("（展開済み）" if unzip_local else ""))
+            except Exception as e:
+                st.warning(f"ローカル保存に失敗: {e}")
 
         st.caption("ZIPには images/*.png と segments/*.csv が含まれます。画像は軸・ラベル無しの正方グレースケールです。")
 
